@@ -268,3 +268,13 @@ jobs:
 ### 3. Lỗi: GitHub Actions không tự chạy khi push code
 - **Nguyên nhân**: Tên thư mục chứa workflow bị sai chính tả (ví dụ `.github/workflow` thiếu chữ `s`).
 - **Cách khắc phục**: Đổi tên thư mục thành chuẩn chính xác: `.github/workflows/` (có chữ `s`).
+
+### 4. Lỗi: `ERR_PNPM_IGNORED_BUILDS` trong pnpm v12
+- **Nguyên nhân**: `pnpm v12` áp dụng cơ chế bảo mật mới, chặn các gói phụ thuộc chạy build scripts (như `bcrypt`, `esbuild`) trừ khi được khai báo cho phép.
+- **Cách khắc phục**: Khai báo danh sách các gói được phép build trong `pnpm-workspace.yaml`:
+  ```yaml
+  onlyBuiltDependencies:
+    - bcrypt
+    - esbuild
+  ```
+  Hoặc sử dụng cờ `--ignore-scripts` trong CI nếu chỉ chạy Lint/Format.
