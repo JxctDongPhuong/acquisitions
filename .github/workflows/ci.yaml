@@ -1,57 +1,52 @@
-name : CI pipeline
+name: CI pipeline
 
-# start when the event push or pull-request on the branch main or master
+# Start when the event push or pull_request on branch main or master
 on:
   push:
     branches: [ "main", "master" ]
   pull_request:
     branches: [ "main", "master" ]
 
-jobs : 
-# check the quality of code and dependencies
-  quality-check : 
-    # run on the ubuntu latest version
+jobs:
+  # Job 1: Check the quality of code and dependencies
+  quality-check:
+    name: quality-check
     runs-on: ubuntu-latest
-    # steps
-    steps :
 
-      - name : Checkout reponsitory
-        #Checkout the code from the repository
+    steps:
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name : Setup pnpm
-        #Setup the pnpm environment
+      - name: Setup pnpm
         uses: pnpm/action-setup@v4
-        with:
-          version: latest
-      - name : Setup Node.js 22
-        #Setup the node.js 22 environment
+
+      - name: Setup Node.js 22
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: 22
           cache: pnpm
-      - name : Install dependencies
-        run : pnpm i --frozen-lockfile
 
-      - name : run linter
-        run : pnpm lint
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
 
-      - name : check code formating
-        run : pnpm format:check
+      - name: Run linter
+        run: pnpm lint
 
-# job 2 : checked package build
+      - name: Check code formatting
+        run: pnpm format:check
+
+  # Job 2: Check container build
   docker-build-test:
-    name : docker build & verify
+    name: docker build & verify
     needs: quality-check
     runs-on: ubuntu-latest
-    # steps
-    steps :
-      - name : checkout reponsitory
-        uses : actions/checkout@v4
-    
-      - name : set up docker buildx
-        uses : docker/setup-buildx-action@v3 # a repo allow to use docker without sudo
 
-      - name : build docker imgae
-        run : |
-          docker build -t acquisitions-api:test .
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker Image
+        run: docker build -t acquisitions-api:test .
