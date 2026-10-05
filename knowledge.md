@@ -297,3 +297,18 @@ jobs:
     - esbuild
   ```
   Hoặc sử dụng cờ `--ignore-scripts` trong CI nếu chỉ chạy Lint/Format.
+
+### 5. Lỗi: Linter & Prettier thất bại trên CI (`13 problems (13 errors)...`)
+
+- **Nguyên nhân**: Mã nguồn chứa các sai lệch về chuẩn format code (dấu nháy kép `"` thay vì nháy đơn `'`, thiếu dấu chấm phẩy `;`, thụt lề hoặc xuống dòng không đúng chuẩn Prettier).
+- **Cách khắc phục**: Chạy các lệnh tự động sửa format và lint trước khi commit code:
+  ```bash
+  # 1. Tự động format toàn bộ dự án bằng Prettier
+  pnpm format
+
+  # 2. Tự động sửa các lỗi cú pháp bằng ESLint
+  pnpm lint:fix
+
+  # 3. Kiểm tra lại lần cuối để chắc chắn sạch 100%
+  pnpm lint && pnpm format:check
+  ```
