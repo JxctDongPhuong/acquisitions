@@ -266,38 +266,88 @@ jobs:
 
 ## 🚀 PHẦN 5: CONTINUOUS DEPLOYMENT (CD) VỚI DOCKER HUB
 
-### 1. Luồng hoạt động (CD Workflow):
+### 1. Luồng hoạt động chuẩn công nghiệp (Industry Standard CD Workflow):
 
 ```
-[ GitHub Actions ] ──(Đăng nhập)──► [ Docker Hub (xacee) ]
-        │                                  │
-        └───────(Build & Push Image)───────┘
-                        │
-                        ▼ Image: `xacee/acquisitions-api:latest`
-            [ Production Server / VPS kéo về chạy ]
+┌─────────────────────────────────────────────────────────────┐
+│                 GITHUB ACTIONS RUNNER (Cloud)               │
+│                                                             │
+│   Job 1: quality-check (CI)                                 │
+│   └─ [PASS ✔] Lint & Format hợp lệ                         │
+│                                                             │
+│   Job 2: docker-build-push (CD)                             │
+│   ├─ 1. actions/checkout@v4                                 │
+│   ├─ 2. setup-qemu-action (Hỗ trợ đa kiến trúc CPU)         │
+│   ├─ 3. setup-buildx-action (Build engine thế hệ mới)       │
+│   ├─ 4. login-action (Đăng nhập bí mật qua GitHub Secrets)  │
+│   └─ 5. build-push-action (Build & Push Image lên Cloud)   │
+└──────────────────────────────┬──────────────────────────────┘
+                               │ Upload Image qua Internet
+                               ▼
+┌─────────────────────────────────────────────────────────────┐
+│                 DOCKER HUB REGISTRY (xacee)                 │
+│                                                             │
+│   Repository: xacee/acquisitions-api                        │
+│   ├─ Tag 1: `latest` (Bản phát hành mới nhất)               │
+│   └─ Tag 2: `<commit-sha>` (Mã băm commit Git để Rollback)  │
+└──────────────────────────────┬──────────────────────────────┘
+                               │ Pull Image về chạy
+                               ▼
+┌─────────────────────────────────────────────────────────────┐
+│          MÁY CHỦ THỰC TẾ (Production Server / Cloud)        │
+│   `docker compose pull && docker compose up -d`             │
+└─────────────────────────────────────────────────────────────┘
 ```
-
-### 2. Quản trị Bí mật với GitHub Secrets:
-
-- **Nguyên tắc an ninh mạng**: Tuyệt đối không bao giờ hardcode mật khẩu, token hay private key vào file code `.yaml` hoặc kho Git công khai.
-- **Cơ chế**: Sử dụng cú pháp `${{ secrets.TÊN_SECRET }}` để GitHub tự động mã hóa và inject biến môi trường bảo mật vào Runner lúc runtime.
-
-### 3. Cấu hình Action chính thức của Docker:
-
-- **`docker/login-action@v3`**: Đăng nhập an toàn vào Docker Hub qua `username` và `Personal Access Token (PAT)`.
-- **`docker/build-push-action@v5`**:
-  - Tự động build image dựa trên `Dockerfile`.
-  - Gắn đa tag:
-    - `latest`: Đại diện cho bản phát hành mới nhất.
-    - `${{ github.sha }}`: Gắn mã băm (Commit SHA) của Git để dễ dàng truy vết và rollback khi có sự cố.
-  - `push: true`: Tự động đẩy image lên Docker Hub.
 
 ---
 
-## 🛠️ CÁC LỖI THƯỜNG GẶP & CÁCH XỬ LÝ
+### 2. Quản trị Bí mật An toàn với GitHub Secrets:
+
+- **Nguyên tắc an ninh mạng (Zero Trust)**: 
+  - Tuyệt đối không bao giờ ghi trực tiếp mật khẩu, token hay private key vào mã nguồn (file `.yaml`, `.js`) hoặc đẩy lên Git.
+  - Sử dụng **Personal Access Token (PAT)** có thời hạn và quyền hạn giới hạn (`Repo Read & Write`) thay vì dùng mật khẩu tài khoản chính.
+- **Cơ chế hoạt động**:
+  - Dữ liệu secret được lưu trữ dưới dạng mã hóa bất đối xứng trên máy chủ bảo mật của GitHub.
+  - Khi workflow chạy, GitHub Runner tự động giải mã và nạp vào biến môi trường thông qua cú pháp:
+    ```yaml
+    ${{ secrets.DOCKERHUB_USERNAME }} # Tài khoản Docker Hub (xacee)
+    ${{ secrets.DOCKERHUB_TOKEN }}    # Access Token bí mật
+    ```
+  - Trên màn hình log công khai, GitHub sẽ tự động che phủ các giá trị này thành `***` để tránh bị lộ.
+
+---
+
+### 3. Giải thích chi tiết từng Action trong Job CD:
+
+1. **`docker/setup-qemu-action@v3` (QEMU Emulator)**:
+   - **Tác dụng**: Giả lập phần cứng đa kiến trúc CPU.
+   - **Ý nghĩa**: Cho phép build Docker Image trên máy ảo x86_64 của GitHub nhưng vẫn có thể chạy mượt mà trên server ARM64 (như chip Apple M1/M2/M3, AWS Graviton hay Raspberry Pi).
+
+2. **`docker/setup-buildx-action@v3` (Docker Buildx)**:
+   - **Tác dụng**: Khởi tạo BuildKit — công cụ build thế hệ mới của Docker Inc.
+   - **Ưu điểm**: Hỗ trợ cache nhiều tầng (layer caching) siêu nhanh và cho phép build xong đẩy thẳng lên Registry chỉ với 1 bước cấu hình.
+
+3. **`docker/login-action@v3`**:
+   - **Tác dụng**: Tự động thực hiện bắt tay xác thực với Docker Hub (`docker login`).
+
+4. **`docker/build-push-action@v5`**:
+   - **Cấu hình quan trọng**:
+     - `context: .`: Thư mục gốc chứa mã nguồn.
+     - `file: ./Dockerfile`: File Dockerfile chỉ định dùng để build.
+     - `push: true`: Tự động đẩy image lên Registry sau khi build hoàn tất.
+     - `tags`: Chiến lược gắn đa tag (**Dual-tagging Strategy**):
+       - `latest`: Giúp Production Server luôn luôn trỏ đến phiên bản mới nhất.
+       - `${{ github.sha }}`: Gắn mã commit Git (ví dụ: `2514b60...`). Nếu bản `latest` gặp sự cố ngoài thực tế, DevOps chỉ cần đổi cấu hình sang mã tag commit cũ để **Rollback hệ thống ngay lập tức trong 5 giây**!
+
+5. **`if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'`**:
+   - **Tác dụng**: Bộ lọc nhánh an toàn.
+   - **Ý nghĩa**: Đảm bảo chỉ khi code được merge chính thức vào nhánh `main`, image mới được đẩy lên Docker Hub. Nếu ai đó tạo nhánh phụ hoặc Pull Request thử nghiệm, hệ thống chỉ chạy CI để kiểm tra chứ **không ghi đè image lên Docker Hub**.
+
+---
+
+## 🛠️ CÁC LỖI THƯỜNG GẶP & CÁCH XỬ LÝ (TROUBLESHOOTING)
 
 ### 1. Lỗi: `port is already allocated` (Port 3000 đã bị chiếm dụng)
-
 - **Nguyên nhân**: Bạn đang chạy lệnh `pnpm dev` hoặc có 1 ứng dụng khác đang chiếm cổng `3000` ở máy thật.
 - **Cách khắc phục**:
   - **Cách 1**: Tắt tiến trình `pnpm dev` ở terminal đang chạy (nhấn `Ctrl + C`).
@@ -308,17 +358,14 @@ jobs:
     ```
 
 ### 2. Lỗi: `failed to connect to the docker API...`
-
 - **Nguyên nhân**: Docker Desktop trên Windows chưa được bật hoặc chưa khởi động xong.
 - **Cách khắc phục**: Mở ứng dụng Docker Desktop và đợi icon chuyển sang màu xanh (Engine running) trước khi chạy lệnh.
 
 ### 3. Lỗi: GitHub Actions không tự chạy khi push code
-
 - **Nguyên nhân**: Tên thư mục chứa workflow bị sai chính tả (ví dụ `.github/workflow` thiếu chữ `s`).
 - **Cách khắc phục**: Đổi tên thư mục thành chuẩn chính xác: `.github/workflows/` (có chữ `s`).
 
 ### 4. Lỗi: `ERR_PNPM_IGNORED_BUILDS` trong pnpm v12
-
 - **Nguyên nhân**: `pnpm v12` áp dụng cơ chế bảo mật mới, chặn các gói phụ thuộc chạy build scripts (như `bcrypt`, `esbuild`) trừ khi được khai báo cho phép.
 - **Cách khắc phục**: Khai báo danh sách các gói được phép build trong `pnpm-workspace.yaml`:
   ```yaml
@@ -327,3 +374,21 @@ jobs:
     - esbuild
   ```
   Hoặc sử dụng cờ `--ignore-scripts` trong CI nếu chỉ chạy Lint/Format.
+
+### 5. Lỗi: Linter & Prettier thất bại trên CI (`13 problems (13 errors)...`)
+- **Nguyên nhân**: Mã nguồn chứa các sai lệch về chuẩn format code (dấu nháy kép `"` thay vì nháy đơn `'`, thiếu dấu chấm phẩy `;`, thụt lề hoặc xuống dòng không đúng chuẩn Prettier).
+- **Cách khắc phục**: Chạy các lệnh tự động sửa format và lint trước khi commit code:
+  ```bash
+  # 1. Tự động format toàn bộ dự án bằng Prettier
+  pnpm format
+
+  # 2. Tự động sửa các lỗi cú pháp bằng ESLint
+  pnpm lint:fix
+
+  # 3. Kiểm tra lại lần cuối để chắc chắn sạch 100%
+  pnpm lint && pnpm format:check
+  ```
+
+### 6. Lỗi: Prettier báo lỗi format trên chính file `.github/workflows/ci.yaml`
+- **Nguyên nhân**: Trong file YAML có các khoảng trắng thừa hoặc thụt lề chưa đúng 2 spaces theo chuẩn Prettier.
+- **Cách khắc phục**: Chạy `pnpm format` (tức là `prettier --write .`) trước khi `git push`. Prettier sẽ tự động căn chỉnh lại cả các file cấu hình YAML, JSON và Markdown một cách hoàn hảo.
