@@ -5,6 +5,7 @@ Tài liệu này ghi chép chi tiết các khái niệm, bản chất kỹ thu�
 ---
 
 ## 📑 MỤC LỤC
+
 1. [Phần 1: Observability & Health Checks (Liveness vs Readiness)](#phần-1-observability--health-checks)
 2. [Phần 2: Dockerize Ứng Dụng với Multi-Stage Build](#phần-2-dockerize-ứng-dụng-với-multi-stage-build)
 3. [Phần 3: Điều Phối Container với Docker Compose](#phần-3-điều-phối-container-với-docker-compose)
@@ -16,6 +17,7 @@ Tài liệu này ghi chép chi tiết các khái niệm, bản chất kỹ thu�
 ## 🩺 PHẦN 1: OBSERVABILITY & HEALTH CHECKS
 
 ### 1. Bản chất và Mục đích
+
 Trong môi trường Production (Docker, Kubernetes, AWS, Render), hệ thống cần cơ chế tự động giám sát để biết khi nào ứng dụng gặp sự cố để tự khởi động lại hoặc điều hướng lưu lượng truy cập.
 
 ```
@@ -44,13 +46,15 @@ Trong môi trường Production (Docker, Kubernetes, AWS, Render), hệ thống 
 ### 2. Kiến Thức JavaScript/Node.js Bổ Trợ
 
 #### a. `async / await` trong Backend:
+
 - **Bản chất**: Node.js chạy trên **Single Thread** (1 luồng duy nhất).
-- **Cơ chế**: Khi gặp `await sql`SELECT 1``, hàm `ready` tạm dừng chờ Database phản hồi qua mạng, nhưng luồng chính của Node.js **không bị đơ** mà lập tức quay sang phục vụ các request của những người dùng khác (*Non-blocking I/O*).
+- **Cơ chế**: Khi gặp `await sql`SELECT 1``, hàm `ready` tạm dừng chờ Database phản hồi qua mạng, nhưng luồng chính của Node.js **không bị đơ** mà lập tức quay sang phục vụ các request của những người dùng khác (_Non-blocking I/O_).
 - **Quy tắc**:
   - Mọi thao tác I/O ra bên ngoài (Database, Network API, Đọc/Ghi file, Băm mật khẩu `bcrypt`) đều trả về `Promise` và cần `await`.
   - Hàm chứa `await` bắt buộc phải có từ khóa `async`.
 
 #### b. Default Export vs Named Export trong ES Modules:
+
 - **Default Export (`export default router;`)**: Mỗi file chỉ có 1 đại diện mặc định. Khi import sang file khác (`src/app.js`), bạn có quyền đặt tên tùy ý mà không cần ngoặc nhọn:
   ```javascript
   import healthRoutes from '#routes/health.routes.js';
@@ -61,6 +65,7 @@ Trong môi trường Production (Docker, Kubernetes, AWS, Render), hệ thống 
   ```
 
 #### c. `app.use(healthRoutes)` hoạt động thế nào?
+
 - `app.use()` là hàm đăng ký danh sách các tuyến đường (Router/Middleware) vào Express.
 - Khi người dùng gửi `GET /health`, Express duyệt qua các middleware, khớp đường dẫn trong `healthRoutes` và thực thi hàm callback chứa `res.status(200).json(...)` để đóng gói dữ liệu JSON gửi về cho client.
 
@@ -69,18 +74,21 @@ Trong môi trường Production (Docker, Kubernetes, AWS, Render), hệ thống 
 ## 🐳 PHẦN 2: DOCKERIZE ỨNG DỤNG VỚI MULTI-STAGE BUILD
 
 ### 1. Phân biệt các khái niệm cốt lõi:
+
 - **Docker Image**: Một bản đóng gói bất biến (Template) chứa đầy đủ: Hệ điều hành tối giản (Alpine Linux), Node.js runtime, mã nguồn code và các thư viện `node_modules`.
 - **Docker Container**: Một thực thể đang chạy (Running Instance) được tạo ra từ Docker Image.
 
 ---
 
 ### 2. File `.dockerignore`
+
 - Hoạt động tương tự `.gitignore`.
 - **Tác dụng**: Ngăn không cho Docker copy các thư mục nặng hoặc nhạy cảm (`node_modules`, `.env`, `.git`, `logs`) vào Image, giúp giảm kích thước Image và bảo mật không để lộ credentials.
 
 ---
 
 ### 3. Cấu trúc `Dockerfile` Multi-Stage:
+
 Multi-stage build chia quá trình đóng gói thành 2 giai đoạn:
 
 ```
@@ -93,6 +101,7 @@ Multi-stage build chia quá trình đóng gói thành 2 giai đoạn:
 ```
 
 #### Giải thích từng câu lệnh quan trọng:
+
 1. `FROM node:22-alpine AS builder`: Chọn image hệ điều hành Alpine siêu nhẹ (chỉ khoảng 5MB).
 2. `corepack enable && corepack prepare pnpm@latest --activate`: Bật công cụ quản lý package manager có sẵn trong Node.js để kích hoạt `pnpm` mà không cần cài `npm install -g pnpm`.
 3. `COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./`: Tận dụng cơ chế **Docker Layer Caching**. Nếu `package.json` không đổi, Docker sẽ lấy cache các dependencies mà không tải lại từ đầu.
@@ -107,6 +116,7 @@ Multi-stage build chia quá trình đóng gói thành 2 giai đoạn:
 ## 📦 PHẦN 3: ĐIỀU PHỐI CONTAINER VỚI DOCKER COMPOSE
 
 ### 1. Tại sao dùng Docker Compose?
+
 Thay vì phải nhớ và gõ câu lệnh `docker run` cực kỳ dài dòng, Docker Compose cho phép cấu hình toàn bộ thông số trong file `docker-compose.yaml` và quản lý bằng 1 lệnh duy nhất.
 
 ---
@@ -115,27 +125,29 @@ Thay vì phải nhớ và gõ câu lệnh `docker run` cực kỳ dài dòng, Do
 
 ```yaml
 services:
-  api:                          # Tên định danh của service
+  api: # Tên định danh của service
     container_name: 'acquisitions-api' # Tên container hiển thị
     image: acquisitions-api:1.0 # Tên và tag của image sau khi build
     build:
-      context: .                # Thư mục chứa mã nguồn (thư mục hiện tại)
-      dockerfile: Dockerfile    # File Dockerfile sử dụng
+      context: . # Thư mục chứa mã nguồn (thư mục hiện tại)
+      dockerfile: Dockerfile # File Dockerfile sử dụng
     ports:
-      - '3000:3000'             # Ánh xạ: <Port Máy Thật>:<Port Trong Container>
+      - '3000:3000' # Ánh xạ: <Port Máy Thật>:<Port Trong Container>
     env_file:
-      - .env                    # Tự động nạp các biến môi trường từ .env
-    restart: unless-stopped     # Tự khởi động lại nếu app bị crash
-    healthcheck:                # Bác sĩ khám sức khỏe định kỳ cho container
-      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/health || exit 1"]
-      interval: 30s             # Cứ mỗi 30 giây kiểm tra 1 lần
-      timeout: 3s               # Quá 3 giây không phản hồi coi như lỗi
-      start_period: 5s          # Đợi 5 giây sau khi bật container mới bắt đầu test
-      retries: 3                # Bị lỗi 3 lần liên tiếp thì đánh dấu UNHEALTHY
+      - .env # Tự động nạp các biến môi trường từ .env
+    restart: unless-stopped # Tự khởi động lại nếu app bị crash
+    healthcheck: # Bác sĩ khám sức khỏe định kỳ cho container
+      test: ['CMD-SHELL', 'wget -qO- http://localhost:3000/health || exit 1']
+      interval: 30s # Cứ mỗi 30 giây kiểm tra 1 lần
+      timeout: 3s # Quá 3 giây không phản hồi coi như lỗi
+      start_period: 5s # Đợi 5 giây sau khi bật container mới bắt đầu test
+      retries: 3 # Bị lỗi 3 lần liên tiếp thì đánh dấu UNHEALTHY
 ```
 
 #### Giải thích câu lệnh test Healthcheck:
+
 `test: ["CMD-SHELL", "wget -qO- http://localhost:3000/health || exit 1"]`
+
 - `CMD-SHELL`: Chạy lệnh qua terminal Linux `/bin/sh`.
 - `wget`: Công cụ gửi HTTP request tải dữ liệu.
 - `-q`: Quiet (chạy ngầm không in log tiến trình download).
@@ -146,25 +158,27 @@ services:
 
 ### 3. Bảng tra cứu các lệnh Docker Compose thường dùng:
 
-| Lệnh | Ý nghĩa |
-| :--- | :--- |
-| `docker compose up -d --build` | Build lại image mới nhất và khởi chạy container ngầm. |
-| `docker compose ps` | Kiểm tra danh sách container và trạng thái (`healthy` / `unhealthy`). |
-| `docker compose logs -f` | Xem log theo thời gian thực (nhấn `Ctrl + C` để thoát). |
-| `docker compose stop` | Tạm dừng container mà không xóa. |
-| `docker compose down` | Dừng và dọn dẹp xóa container an toàn. |
+| Lệnh                           | Ý nghĩa                                                               |
+| :----------------------------- | :-------------------------------------------------------------------- |
+| `docker compose up -d --build` | Build lại image mới nhất và khởi chạy container ngầm.                 |
+| `docker compose ps`            | Kiểm tra danh sách container và trạng thái (`healthy` / `unhealthy`). |
+| `docker compose logs -f`       | Xem log theo thời gian thực (nhấn `Ctrl + C` để thoát).               |
+| `docker compose stop`          | Tạm dừng container mà không xóa.                                      |
+| `docker compose down`          | Dừng và dọn dẹp xóa container an toàn.                                |
 
 ---
 
 ## ⚙️ PHẦN 4: TỰ ĐỘNG HÓA CI/CD VỚI GITHUB ACTIONS
 
 ### 1. Bản chất của CI/CD
+
 - **CI (Continuous Integration - Tích hợp liên tục)**: Tự động kiểm tra chất lượng mã nguồn (`lint`, `format`) và thử nghiệm build container mỗi khi có code mới được đẩy lên GitHub (`push` hoặc `pull_request`).
 - **CD (Continuous Delivery / Deployment - Triển khai liên tục)**: Tự động đóng gói và cập nhật ứng dụng lên môi trường Production (VPS, AWS, Render) sau khi CI vượt qua tất cả các bài kiểm tra.
 
 ---
 
 ### 2. Kiến trúc & Vòng đời máy ảo (Ephemeral Runners):
+
 - Mỗi **Job** trong GitHub Actions chạy trên một **máy ảo Ubuntu độc lập (Runner)**.
 - **Tính chất Ephemeral (Tạm thời)**:
   - Khi Job bắt đầu: GitHub tự động cấp phát máy ảo mới tinh.
@@ -181,9 +195,9 @@ name: CI Pipeline
 # 1. Sự kiện kích hoạt (Trigger)
 on:
   push:
-    branches: [ "main", "master" ]
+    branches: ['main', 'master']
   pull_request:
-    branches: [ "main", "master" ]
+    branches: ['main', 'master']
 
 jobs:
   # Job 1: Kiểm tra chất lượng code
@@ -239,6 +253,7 @@ jobs:
 ```
 
 #### Giải thích các từ khóa quan trọng:
+
 1. `uses: actions/checkout@v4`:
    - `uses`: Lệnh gọi một Action có sẵn.
    - `actions`: Tổ chức chính thức của GitHub.
@@ -252,6 +267,7 @@ jobs:
 ## 🛠️ CÁC LỖI THƯỜNG GẶP & CÁCH XỬ LÝ
 
 ### 1. Lỗi: `port is already allocated` (Port 3000 đã bị chiếm dụng)
+
 - **Nguyên nhân**: Bạn đang chạy lệnh `pnpm dev` hoặc có 1 ứng dụng khác đang chiếm cổng `3000` ở máy thật.
 - **Cách khắc phục**:
   - **Cách 1**: Tắt tiến trình `pnpm dev` ở terminal đang chạy (nhấn `Ctrl + C`).
@@ -262,14 +278,17 @@ jobs:
     ```
 
 ### 2. Lỗi: `failed to connect to the docker API...`
+
 - **Nguyên nhân**: Docker Desktop trên Windows chưa được bật hoặc chưa khởi động xong.
 - **Cách khắc phục**: Mở ứng dụng Docker Desktop và đợi icon chuyển sang màu xanh (Engine running) trước khi chạy lệnh.
 
 ### 3. Lỗi: GitHub Actions không tự chạy khi push code
+
 - **Nguyên nhân**: Tên thư mục chứa workflow bị sai chính tả (ví dụ `.github/workflow` thiếu chữ `s`).
 - **Cách khắc phục**: Đổi tên thư mục thành chuẩn chính xác: `.github/workflows/` (có chữ `s`).
 
 ### 4. Lỗi: `ERR_PNPM_IGNORED_BUILDS` trong pnpm v12
+
 - **Nguyên nhân**: `pnpm v12` áp dụng cơ chế bảo mật mới, chặn các gói phụ thuộc chạy build scripts (như `bcrypt`, `esbuild`) trừ khi được khai báo cho phép.
 - **Cách khắc phục**: Khai báo danh sách các gói được phép build trong `pnpm-workspace.yaml`:
   ```yaml

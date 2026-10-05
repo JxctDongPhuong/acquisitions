@@ -36,7 +36,9 @@
   "packageManager": "pnpm@12.8.1",
   "type": "module",
   "pnpm": {
-    "onlyBuiltDependencies": ["bcrypt"]
+    "onlyBuiltDependencies": [
+      "bcrypt"
+    ]
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",

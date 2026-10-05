@@ -3,9 +3,9 @@ name: CI pipeline
 # Start when the event push or pull_request on branch main or master
 on:
   push:
-    branches: [ "main", "master" ]
+    branches: ['main', 'master']
   pull_request:
-    branches: [ "main", "master" ]
+    branches: ['main', 'master']
 
 jobs:
   # Job 1: Check the quality of code and dependencies

@@ -23,7 +23,9 @@ export const requireAuth = (req, res, next) => {
 
     // TokenExpiredError from jsonwebtoken
     if (e.cause?.name === 'TokenExpiredError') {
-      return res.status(401).json({ message: 'Session expired, please sign in again' });
+      return res
+        .status(401)
+        .json({ message: 'Session expired, please sign in again' });
     }
 
     return res.status(401).json({ message: 'Invalid token' });
@@ -44,7 +46,9 @@ export const requireRole = (...roles) => {
     }
 
     if (!roles.includes(req.user.role)) {
-      return res.status(403).json({ message: 'Forbidden: insufficient permissions' });
+      return res
+        .status(403)
+        .json({ message: 'Forbidden: insufficient permissions' });
     }
 
     next();

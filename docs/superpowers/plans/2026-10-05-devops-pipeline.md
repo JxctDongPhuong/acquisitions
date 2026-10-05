@@ -9,6 +9,7 @@
 **Tech Stack:** Node.js 22, Express 5, pnpm, Docker, Docker Compose, GitHub Actions.
 
 ## Global Constraints
+
 - Sử dụng `pnpm` làm package manager.
 - Node.js version 22-alpine cho Docker.
 - Non-root user `node` cho security trong container.
@@ -18,6 +19,7 @@
 ### Task 1: Observability & Enhanced Healthcheck
 
 **Files:**
+
 - Create: `src/routes/health.routes.js`
 - Modify: `src/app.js`
 
@@ -36,6 +38,7 @@
 ### Task 2: Multi-Stage Dockerfile & .dockerignore
 
 **Files:**
+
 - Create: `.dockerignore`
 - Create: `Dockerfile`
 
@@ -48,6 +51,7 @@
 ### Task 3: Docker Compose Setup
 
 **Files:**
+
 - Create: `docker-compose.yml`
 
 - [ ] **Step 1: Tạo `docker-compose.yml` với service `api` và healthcheck configuration**
@@ -58,6 +62,7 @@
 ### Task 4: GitHub Actions CI Workflow
 
 **Files:**
+
 - Create: `.github/workflows/ci.yml`
 
 - [ ] **Step 1: Tạo workflow GitHub Actions tự động hóa `lint`, `format:check`, và `docker build`**

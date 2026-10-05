@@ -6,7 +6,6 @@ services:
     image: acquisitions-api:1.0
     # environment variables
 
-
     build:
       context: .
       dockerfile: dockerfile
@@ -19,12 +18,12 @@ services:
     env_file:
       - .env
 
-    # restart policy 
+    # restart policy
     restart: unless-stopped
 
-    # healthcheck 
+    # healthcheck
     healthcheck:
-      test: [ "CMD-SHELL", "wget -qO- http://localhost:3000/health || exit 1" ]
+      test: ['CMD-SHELL', 'wget -qO- http://localhost:3000/health || exit 1']
       interval: 30s
       timeout: 3s
       start_period: 5s
