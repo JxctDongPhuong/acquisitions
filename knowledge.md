@@ -267,6 +267,7 @@ jobs:
 ## 🚀 PHẦN 5: CONTINUOUS DEPLOYMENT (CD) VỚI DOCKER HUB
 
 ### 1. Luồng hoạt động (CD Workflow):
+
 ```
 [ GitHub Actions ] ──(Đăng nhập)──► [ Docker Hub (xacee) ]
         │                                  │
@@ -277,16 +278,18 @@ jobs:
 ```
 
 ### 2. Quản trị Bí mật với GitHub Secrets:
+
 - **Nguyên tắc an ninh mạng**: Tuyệt đối không bao giờ hardcode mật khẩu, token hay private key vào file code `.yaml` hoặc kho Git công khai.
 - **Cơ chế**: Sử dụng cú pháp `${{ secrets.TÊN_SECRET }}` để GitHub tự động mã hóa và inject biến môi trường bảo mật vào Runner lúc runtime.
 
 ### 3. Cấu hình Action chính thức của Docker:
+
 - **`docker/login-action@v3`**: Đăng nhập an toàn vào Docker Hub qua `username` và `Personal Access Token (PAT)`.
 - **`docker/build-push-action@v5`**:
   - Tự động build image dựa trên `Dockerfile`.
   - Gắn đa tag:
-    * `latest`: Đại diện cho bản phát hành mới nhất.
-    * `${{ github.sha }}`: Gắn mã băm (Commit SHA) của Git để dễ dàng truy vết và rollback khi có sự cố.
+    - `latest`: Đại diện cho bản phát hành mới nhất.
+    - `${{ github.sha }}`: Gắn mã băm (Commit SHA) của Git để dễ dàng truy vết và rollback khi có sự cố.
   - `push: true`: Tự động đẩy image lên Docker Hub.
 
 ---

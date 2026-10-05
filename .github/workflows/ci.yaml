@@ -82,9 +82,5 @@ jobs:
           file: ./Dockerfile   # Đọc các chỉ thị từ file Dockerfile
           push: true           # 'true' = Build xong tự động upload lên Docker Hub
           tags: |
-            # Tag 1: 'latest' -> Đại diện cho bản mới nhất (Server luôn kéo tag này về chạy)
             ${{ secrets.DOCKERHUB_USERNAME }}/acquisitions-api:latest
-            
-            # Tag 2: '<commit-hash>' -> Đánh dấu theo mã commit của Git (ví dụ: a1b2c3d)
-            # Rất quan trọng trong thực tế: Nếu bản latest bị lỗi, ta chỉ cần đổi tag này để Rollback ngay lập tức!
             ${{ secrets.DOCKERHUB_USERNAME }}/acquisitions-api:${{ github.sha }}
