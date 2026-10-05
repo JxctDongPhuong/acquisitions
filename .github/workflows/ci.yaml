@@ -1,16 +1,17 @@
-name: CI pipeline
+name: CI/CD Pipeline
 
-# Start when the event push or pull_request on branch main or master
 on:
   push:
-    branches: ['main', 'master']
+    branches: [ "main", "master" ]
   pull_request:
-    branches: ['main', 'master']
+    branches: [ "main", "master" ]
 
 jobs:
-  # Job 1: Check the quality of code and dependencies
+  # ==========================================
+  # Job 1: Kiểm tra chất lượng mã nguồn (CI)
+  # ==========================================
   quality-check:
-    name: quality-check
+    name: Code Quality Check
     runs-on: ubuntu-latest
 
     steps:
@@ -34,19 +35,56 @@ jobs:
 
       - name: Check code formatting
         run: pnpm format:check
-
-  # Job 2: Check container build
-  docker-build-test:
-    name: docker build & verify
+  # ==========================================
+  # Job 2: Đóng gói và Đẩy lên Docker Hub (CD)
+  # ==========================================
+  docker-build-push:
+    name: Build & Push Docker Image
+    
+    # 1. 'needs': Đảm bảo chỉ khi Job CI (quality-check) chạy XANH (PASS) 
+    # thì mới cho phép chạy tiếp CD. Nếu code lỗi lint/format -> Dừng ngay lập tức!
     needs: quality-check
+    
     runs-on: ubuntu-latest
+    
+    # 2. 'if': Điều kiện bảo vệ. Chỉ đẩy Image lên Docker Hub khi code được PUSH vào nhánh chính (main/master).
+    # Nếu ai đó tạo nhánh phụ hoặc Pull Request để thử nghiệm -> KHÔNG đẩy lên Docker Hub.
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
 
     steps:
+      # Bước 1: Kéo mã nguồn về máy ảo mới của Job 2
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # Bước 2: Set up QEMU (Trình giả lập phần cứng)
+      # Giúp build Docker Image tương thích với nhiều loại chip CPU (Intel/AMD x86, Apple Silicon ARM64,...)
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      # Bước 3: Set up Docker Buildx (Bộ công cụ build thế hệ mới của Docker)
+      # Cho phép build nhanh hơn nhờ cache thông minh và hỗ trợ đẩy thẳng Image lên Cloud
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build Docker Image
-        run: docker build -t acquisitions-api:test .
+      # Bước 4: Tự động Đăng nhập vào tài khoản Docker Hub
+      # Thay vì gõ mật khẩu lộ liễu, GitHub sẽ lấy 2 biến bí mật đã mã hóa trong Secrets
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }} # Tên tài khoản (xacee)
+          password: ${{ secrets.DOCKERHUB_TOKEN }}    # Access Token bí mật
+
+      # Bước 5: Build mã nguồn thành Docker Image và ĐẨY (PUSH) lên Docker Hub
+      - name: Build and Push to Docker Hub
+        uses: docker/build-push-action@v5
+        with:
+          context: .           # Lấy mã nguồn ở thư mục hiện tại
+          file: ./Dockerfile   # Đọc các chỉ thị từ file Dockerfile
+          push: true           # 'true' = Build xong tự động upload lên Docker Hub
+          tags: |
+            # Tag 1: 'latest' -> Đại diện cho bản mới nhất (Server luôn kéo tag này về chạy)
+            ${{ secrets.DOCKERHUB_USERNAME }}/acquisitions-api:latest
+            
+            # Tag 2: '<commit-hash>' -> Đánh dấu theo mã commit của Git (ví dụ: a1b2c3d)
+            # Rất quan trọng trong thực tế: Nếu bản latest bị lỗi, ta chỉ cần đổi tag này để Rollback ngay lập tức!
+            ${{ secrets.DOCKERHUB_USERNAME }}/acquisitions-api:${{ github.sha }}

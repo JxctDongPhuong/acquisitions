@@ -264,6 +264,33 @@ jobs:
 
 ---
 
+## 🚀 PHẦN 5: CONTINUOUS DEPLOYMENT (CD) VỚI DOCKER HUB
+
+### 1. Luồng hoạt động (CD Workflow):
+```
+[ GitHub Actions ] ──(Đăng nhập)──► [ Docker Hub (xacee) ]
+        │                                  │
+        └───────(Build & Push Image)───────┘
+                        │
+                        ▼ Image: `xacee/acquisitions-api:latest`
+            [ Production Server / VPS kéo về chạy ]
+```
+
+### 2. Quản trị Bí mật với GitHub Secrets:
+- **Nguyên tắc an ninh mạng**: Tuyệt đối không bao giờ hardcode mật khẩu, token hay private key vào file code `.yaml` hoặc kho Git công khai.
+- **Cơ chế**: Sử dụng cú pháp `${{ secrets.TÊN_SECRET }}` để GitHub tự động mã hóa và inject biến môi trường bảo mật vào Runner lúc runtime.
+
+### 3. Cấu hình Action chính thức của Docker:
+- **`docker/login-action@v3`**: Đăng nhập an toàn vào Docker Hub qua `username` và `Personal Access Token (PAT)`.
+- **`docker/build-push-action@v5`**:
+  - Tự động build image dựa trên `Dockerfile`.
+  - Gắn đa tag:
+    * `latest`: Đại diện cho bản phát hành mới nhất.
+    * `${{ github.sha }}`: Gắn mã băm (Commit SHA) của Git để dễ dàng truy vết và rollback khi có sự cố.
+  - `push: true`: Tự động đẩy image lên Docker Hub.
+
+---
+
 ## 🛠️ CÁC LỖI THƯỜNG GẶP & CÁCH XỬ LÝ
 
 ### 1. Lỗi: `port is already allocated` (Port 3000 đã bị chiếm dụng)
@@ -297,18 +324,3 @@ jobs:
     - esbuild
   ```
   Hoặc sử dụng cờ `--ignore-scripts` trong CI nếu chỉ chạy Lint/Format.
-
-### 5. Lỗi: Linter & Prettier thất bại trên CI (`13 problems (13 errors)...`)
-
-- **Nguyên nhân**: Mã nguồn chứa các sai lệch về chuẩn format code (dấu nháy kép `"` thay vì nháy đơn `'`, thiếu dấu chấm phẩy `;`, thụt lề hoặc xuống dòng không đúng chuẩn Prettier).
-- **Cách khắc phục**: Chạy các lệnh tự động sửa format và lint trước khi commit code:
-  ```bash
-  # 1. Tự động format toàn bộ dự án bằng Prettier
-  pnpm format
-
-  # 2. Tự động sửa các lỗi cú pháp bằng ESLint
-  pnpm lint:fix
-
-  # 3. Kiểm tra lại lần cuối để chắc chắn sạch 100%
-  pnpm lint && pnpm format:check
-  ```
